@@ -7,6 +7,8 @@ use File::Temp 'tempfile';
 use Getopt::Long qw(:config bundling);
 use Fcntl qw(SEEK_SET SEEK_CUR);
 
+#Line 105 changed
+
 # Read Pintos.pm from the same directory as this program.
 BEGIN { my $self = $0; $self =~ s%/+[^/]*$%%; require "$self/Pintos.pm"; }
 
@@ -100,7 +102,8 @@ sub parse_command_line {
 	  or exit 1;
     }
 
-    $sim = "bochs" if !defined $sim;
+    $sim = "qemu" if !defined $sim;
+#    $sim = "bochs" if !defined $sim;
     $debug = "none" if !defined $debug;
     $vga = exists ($ENV{DISPLAY}) ? "window" : "none" if !defined $vga;
 
