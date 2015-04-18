@@ -20,6 +20,7 @@
    of thread.h for details. */
 #define THREAD_MAGIC 0xcd6abf4b
 
+
 /* List of processes in THREAD_READY state, that is, processes
    that are ready to run but not actually running. */
 static struct list ready_list;
@@ -245,6 +246,7 @@ thread_unblock (struct thread *t)
 
   old_level = intr_disable ();
   ASSERT (t->status == THREAD_BLOCKED);
+  //list_insert_ordered(&ready_list, &t->elem, &compare_high_priority, NULL);
   list_push_back (&ready_list, &t->elem);
   t->status = THREAD_READY;
   intr_set_level (old_level);
@@ -315,8 +317,10 @@ thread_yield (void)
   ASSERT (!intr_context ());
 
   old_level = intr_disable ();
-  if (cur != idle_thread) 
+  if (cur != idle_thread) { 
     list_push_back (&ready_list, &cur->elem);
+    //list_insert_ordered(&ready_list, &cur->elem, &compare_high_priority, NULL);
+  }
   cur->status = THREAD_READY;
   schedule ();
   intr_set_level (old_level);
@@ -470,6 +474,8 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+
+  t->actual_priority = priority;
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and
@@ -585,3 +591,31 @@ allocate_tid (void)
 /* Offset of `stack' member within `struct thread'.
    Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof (struct thread, stack);
+
+/*
+    Compare ticks value and return true if the first element has lesser value than the second 
+*/
+bool compare_less_ticks(struct list_elem * element1, struct list_elem * element2, void * aux UNUSED) {
+    struct thread *thread1 = list_entry(element1, struct thread, elem);
+    struct thread *thread2 = list_entry(element2, struct thread, elem);
+    if(thread1->ticks < thread2->ticks) {
+        return true;   
+    }
+    else {
+        return false;
+    } 
+}
+
+/*
+    Compare priority value and return true if the first element has lesser value than the second 
+*/
+bool compare_high_priority(struct list_elem * element1, struct list_elem * element2, void * aux UNUSED) {
+    struct thread *thread1 = list_entry(element1, struct thread, elem);
+    struct thread *thread2 = list_entry(element2, struct thread, elem);
+    if(thread1->priority > thread2->priority) {
+        return true;   
+    }
+    else {
+        return false;
+    } 
+}

@@ -20,6 +20,7 @@
 /* Number of timer ticks since OS booted. */
 static int64_t ticks;
 
+static struct list blocked_list;
 /* Number of loops per timer tick.
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
@@ -37,6 +38,7 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
+  list_init(&blocked_list);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -89,15 +91,27 @@ timer_elapsed (int64_t then)
 void
 timer_sleep (int64_t ticks) 
 {
-  int64_t start = timer_ticks ();
+  int64_t start = timer_ticks();
 
   ASSERT (intr_get_level () == INTR_ON);
-  while (timer_elapsed (start) < ticks) 
-    thread_yield ();
+//  while (timer_elapsed (start) < ticks) 
+//    thread_yield ();
+  thread_current()->ticks = ticks - timer_elapsed(start);
+    if (thread_current()->ticks <= 0)
+    {
+      thread_yield();
+      return;
+    }
+
+  enum intr_level old_level = intr_disable();
+//Ordered list of blocked processes based on number of ascending remaining ticks 
+  list_insert_ordered(&blocked_list, &thread_current()->blocked_elem, &compare_less_ticks, NULL);
+//  list_push_back(&blocked_list, &thread_current()->blocked_elem);
+  thread_block();
+  intr_set_level(old_level); 
+
 }
 
-/* Sleeps for approximately MS milliseconds.  Interrupts must be
-   turned on. */
 void
 timer_msleep (int64_t ms) 
 {
@@ -170,6 +184,17 @@ timer_print_stats (void)
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
 {
+ struct list_elem *iter;
+
+ for (iter = list_begin(&blocked_list); iter != list_end(&blocked_list); iter = list_next(iter))
+ {
+      struct thread *t = list_entry(iter, struct thread, blocked_elem);
+      t->ticks--;
+      if (t->ticks <= 0) {
+        thread_unblock(t);
+        list_remove(&t->blocked_elem);
+      }
+ }
   ticks++;
   thread_tick ();
 }

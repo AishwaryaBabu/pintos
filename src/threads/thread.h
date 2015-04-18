@@ -90,6 +90,13 @@ struct thread
     int priority;                       /* Priority. */
     struct list_elem allelem;           /* List element for all threads list. */
 
+/*Timer.c*/
+    struct list_elem blocked_elem;
+    int64_t ticks;
+
+/*Priority Donation*/
+    int actual_priority;
+
     /* Shared between thread.c and synch.c. */
     struct list_elem elem;              /* List element. */
 
@@ -138,4 +145,8 @@ void thread_set_nice (int);
 int thread_get_recent_cpu (void);
 int thread_get_load_avg (void);
 
+//Required for list_insert_ordered 
+//Reference : http://www.cse.iitd.ernet.in/~sbansal/os/pintos/doc/pintos_html/list_8h-source.html#l00165
+bool compare_less_ticks(struct list_elem * element1, struct list_elem * element2, void * aux);
+bool compare_high_priority(struct list_elem * element1, struct list_elem * element2, void * aux);
 #endif /* threads/thread.h */
